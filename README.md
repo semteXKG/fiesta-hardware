@@ -1,0 +1,1 @@
+`idf.py.exe -p COM4 -DPRIMARY=1 -DFORD=1 build flash monitor`

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Smurf R.A.T. Module</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>   
+    <script type="text/javascript">
+        
+        jQuery(document).ready(function() {  
+          var map = L.map('map').setView([48.3568, 14.53286], 19);
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 23,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }).addTo(map);
+          
+          var p1_set = true;
+          var p2_set = true; 
+
+          var markers = [];
+          var firstRun = true;
+          (function updater() {
+            $.ajax({
+            url: 'coords', 
+            success: function(data) {
+              if (firstRun) {
+                var bla = data.finish.p1.lat;
+                var pointA = new L.LatLng(data.finish.p1.lat, data.finish.p1.lon);
+                var pointB = new L.LatLng(data.finish.p2.lat, data.finish.p2.lon);
+                var polyline = L.polyline([pointA, pointB]).addTo(map);
+                firstRun = false;  
+              }
+
+              if (markers.length > 0) {
+                markers.pop().remove();
+              }    
+              $("#sats").text(data["sats"]);
+              var latLon = [data["lat"], data["lon"]];
+              marker = L.marker(latLon);
+              marker.addTo(map);            
+              
+              markers.push(marker);
+            },
+            complete: function() {
+              // Schedule the next request when the current one's complete
+              setTimeout(updater, 100);
+            }
+          });
+        })();
+
+        $("#select_points").click(() => {
+          p1_set = false; 
+          p2_set = false;
+          L.DomUtil.addClass(map._container,'crosshair-cursor-enabled');
+        });
+
+        map.on('click', onMapClick);
+
+        function onMapClick(e) {
+          if (!p1_set) {
+            $('input[name="p1_lat"]').val(e.latlng.lat);   
+            $('input[name="p1_lon"]').val(e.latlng.lng);
+            p1_set = true;
+          } else if (!p2_set) {
+            $('input[name="p2_lat"]').val(e.latlng.lat);   
+            $('input[name="p2_lon"]').val(e.latlng.lng);
+            p2_set = true;
+            L.DomUtil.removeClass(map._container,'crosshair-cursor-enabled');
+          }
+          console.log(e.latlng.lat + " | " + e.latlng.lng);
+        }
+
+        });
+    </script>
+  </head>
+  <body>
+    <div class="topnav">
+      <h1>Smurf R.A.T. Module</h1>
+    </div>
+    <div class="content">
+      <div class="card">
+        <div id="sats"></div>
+        <div id="map">
+        </div>  
+      </div>
+      <div class="card">
+        <p class="card-title"><i class="fas fa-cogs"></i>GPS Coords</p>
+        <form action="/operation/coords" method="post">
+          <p class="state">
+            <button type="button" id="select_points">Select Points</button></br>
+            P1 Lat: <input type="text" name="p1_lat" size="10" value="%f"/></br>
+            P1 Lon: <input type="text" name="p1_lon" size="10" value="%f"/></br>            
+            P2 Lat: <input type="text" name="p2_lat" size="10" value="%f"/></br>
+            P2 Lon: <input type="text" name="p2_lon" size="10" value="%f"/>            
+          </p>
+          <p>
+            <input type="submit" value="Save"/>
+          </p>
+        </form>
+      </div>
+      <div class="card">
+        <p class="card-title"><i class="fas fa-cogs"></i>Stint Management</p>
+        <form action="/operation/stint" method="post">
+          <p class="state">
+            Stint length (min): <input type="text" name="stint_length_minutes" size="10" value="%.1f"/>            
+          </p>
+          <p>
+            <input type="submit" value="Save"/>
+          </p>
+        </form>
+      </div>
+      <div class="card">
+        <p class="card-title"><i class="fas fa-cogs"></i>Setup</p>
+        <form action="/operation/setup" method="post">
+          <p class="state">
+            Lora Bandwith: <input type="text" name="lora_bandwidth" size="10" value="%.1f"/></br>
+            Lora Spread Factor (5..12): <input type="text" name="lora_spread_factor" size="10" value="%d"/></br>
+            Lora Power (-9..22): <input type="text" name="lora_power" size="10" value="%d"/></br>
+            Bightness (0..100): <input type="text" name="brightness" size="10" value="%d"/></br>
+            Crit: Gas Pres Min: <input type="text" name="gas_pres_min" size="10" value="%.1f"/></br>            
+            Crit: Oil Pres Min: <input type="text" name="oil_pres_min" size="10" value="%.1f"/></br>
+            Crit: Oil Temp Max: <input type="text" name="oil_temp_max" size="10" value="%d"/></br>  
+            Buzzer Enabled: <input type="text" name="buzzer_enabled" size="10" value="%d"/>
+          </p>
+          <p>
+            <input type="submit" value="Save"/>
+          </p>
+        </form>
+      </div>
+      <div class="card">
+        <p class="card-title"><i class="fas fa-cogs"></i>Setup</p>
+        <form action="/operation/shiftlight" method="post">
+          <p class="state">
+            Brightness: <input type="text" name="shift_brightness" size="10" value="%d"/></br>
+            Mode: <select name="shift_mode">
+                    <option value="-1">--old selection--</option>
+                    <option value="1">Left to Right</option>
+                    <option value="2">Both Sides</option>
+                  </select></br>
+
+            RPM 1: <input type="text" name="shift_rpm_0" size="10" value="%d"/></br>
+            RPM 2: <input type="text" name="shift_rpm_1" size="10" value="%d"/></br>
+            RPM 3: <input type="text" name="shift_rpm_2" size="10" value="%d"/></br>
+            RPM 4: <input type="text" name="shift_rpm_3" size="10" value="%d"/></br>
+            RPM 5: <input type="text" name="shift_rpm_4" size="10" value="%d"/></br>
+            RPM 6: <input type="text" name="shift_rpm_5" size="10" value="%d"/></br>
+            RPM 7: <input type="text" name="shift_rpm_6" size="10" value="%d"/></br>
+            RPM 8: <input type="text" name="shift_rpm_7" size="10" value="%d"/></br>
+            RPM 9: <input type="text" name="shift_rpm_8" size="10" value="%d"/></br>
+            RPM 10: <input type="text" name="shift_rpm_9" size="10" value="%d"/></br>
+            RPM Red Flash: <input type="text" name="shift_rpm_red_flash" size="10" value="%d"/></br>
+          </p>
+          <p>
+            <input type="submit" value="Save"/>
+          </p>
+        </form>
+      </div>
+        <div class="card">
+          <p class="card-title"><i class="fas fa-cogs"></i>Access Point</p>
+          <form action="/operation/credentials" method="post">
+            <p class="state">
+              Wlan AP Name: <br/>
+              <input type="text" name="access_point" size="5" value="%s"/>
+            </p>
+            <p class="state">
+              Wlan AP Password: <br/> 
+              <input type="text" name="password" size="5" value="%s" />
+            </p>
+            <p>
+              <input type="submit" value="Save"/>
+            </p>
+          </form>
+        </div>
+        <div class="card">
+          <p class="card-title"><i class="fas fa-cogs"></i>Logging</p>
+          <form action="/operation/logging" method="post">
+            <p class="state">
+              UDP Server: <br/>
+              <input type="text" name="udp_server" size="20" value="%s"/>
+            </p>
+            <p class="state">
+              UDP Port: <br/> 
+              <input type="text" name="udp_port" size="5" value="%d" />
+            </p>
+            <p>
+              <input type="submit" value="Save"/>
+            </p>
+          </form>
+        </div>
+
+        <div class="card">
+          <p class="card-title"><i class="fas fa-cogs"></i>OTA Update</p>
+          <form action="/update" method="post" enctype="multipart/form-data">
+            <p class="state">
+              Update Image: <br/>
+              <input type="file" name="ota_update"/>
+            </p>
+            <p>
+              <input type="submit" value="Submit"/>
+            </p>
+          </form>
+        </div>
+    </div>
+  </body>
+</html>
