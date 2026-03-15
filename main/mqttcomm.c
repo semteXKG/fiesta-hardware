@@ -2,8 +2,12 @@
 #include "led_status.h"
 #include "mqtt_client.h"
 #include "esp_log.h"
-#include "esp_netif.h"
-#include "lwip/inet.h"
+
+#define BROKER_URI    "mqtt://broker:1883"
+#define CLIENT_ID     "telemetry"
+#define STATUS_TOPIC  "fiesta/device/telemetry/status"
+#define STATUS_ONLINE  "{\"status\":\"online\"}"
+#define STATUS_OFFLINE "{\"status\":\"offline\"}"
 
 static const char* TAG = "mqttcomm";
 static esp_mqtt_client_handle_t client = NULL;
@@ -13,6 +17,7 @@ static void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_
     switch (event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT connected");
+            esp_mqtt_client_publish(client, STATUS_TOPIC, STATUS_ONLINE, 0, 1, 1);
             led_status_set_solid();
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -28,22 +33,20 @@ static void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_
     }
 }
 
-void mqttcomm_start(esp_netif_t* netif) {
-    esp_netif_ip_info_t ip_info;
-    esp_netif_get_ip_info(netif, &ip_info);
-
-    char gw_ip[16];
-    inet_ntoa_r(ip_info.gw.addr, gw_ip, sizeof(gw_ip));
-
-    char broker_uri[32];
-    snprintf(broker_uri, sizeof(broker_uri), "mqtt://%s", gw_ip);
-
-    ESP_LOGI(TAG, "Connecting to MQTT broker at %s", broker_uri);
-
+void mqttcomm_start(void) {
     const esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = broker_uri,
+        .broker.address.uri = BROKER_URI,
+        .credentials.client_id = CLIENT_ID,
+        .session.last_will = {
+            .topic = STATUS_TOPIC,
+            .msg = STATUS_OFFLINE,
+            .qos = 1,
+            .retain = 1,
+        },
         .network.reconnect_timeout_ms = 5000,
     };
+
+    ESP_LOGI(TAG, "Connecting to MQTT broker at %s", BROKER_URI);
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
@@ -51,10 +54,10 @@ void mqttcomm_start(esp_netif_t* netif) {
     esp_mqtt_client_start(client);
 }
 
-int mqttcomm_publish(const char* topic, const char* data, int len) {
+int mqttcomm_publish(const char* topic, const char* data, int len, int qos, int retain) {
     if (client == NULL) {
         ESP_LOGE(TAG, "MQTT client not initialized");
         return -1;
     }
-    return esp_mqtt_client_publish(client, topic, data, len, 1, 0);
+    return esp_mqtt_client_publish(client, topic, data, len, qos, retain);
 }

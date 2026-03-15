@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include <stdio.h>
 
-#define MQTT_TOPIC "funkbox/sensors"
+#define MQTT_TOPIC "fiesta/sensors"
 
 static const char* TAG = "broadcaster";
 
@@ -16,6 +16,6 @@ void broadcaster_send_update(void) {
         data->oil.temp,
         data->oil.preassure,
         data->gas.preassure);
-    mqttcomm_publish(MQTT_TOPIC, json, len);
+    mqttcomm_publish(MQTT_TOPIC, json, len, 0, 1);
     ESP_LOGI(TAG, "Sent: %s", json);
 }
