@@ -2,7 +2,7 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 
-#define LED_GPIO GPIO_NUM_8
+#define LED_GPIO GPIO_NUM_2
 
 static esp_timer_handle_t flash_timer = NULL;
 static bool led_on = false;
