@@ -12,10 +12,9 @@ void broadcaster_send_update(void) {
     struct mcu_data* data = state_get_current_state();
     char json[128];
     int len = snprintf(json, sizeof(json),
-        "{\"oil_temp\":%d,\"oil_pres\":%.2f,\"gas_pres\":%.2f}",
+        "{\"oil_temp\":%d,\"oil_pres\":%.2f}",
         data->oil.temp,
-        data->oil.preassure,
-        data->gas.preassure);
+        data->oil.preassure);
     mqttcomm_publish(MQTT_TOPIC, json, len, 0, 1);
     ESP_LOGI(TAG, "Sent: %s", json);
 }
